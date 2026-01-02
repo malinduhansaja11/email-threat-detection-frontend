@@ -32,7 +32,7 @@ export default function AppLayout() {
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
         <Toolbar>
           <Typography variant="h6" noWrap component="div">
-            Obfuscation Word Detector (Demo)
+            AI-BASED E-MAIL THREAT DETECTION SYSTEM
           </Typography>
         </Toolbar>
       </AppBar>

@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./AppLayout.tsx";
 import Inbox from "../pages/Inbox.tsx";
-import Analyzer from "../pages/analyzer.tsx";
+import Analyzer from "../pages/Analyzer.tsx";
 import History from "../pages/History.tsx";
 import Reports from "../pages/Reports.tsx";
 import Settings from "../pages/Settings.tsx";
