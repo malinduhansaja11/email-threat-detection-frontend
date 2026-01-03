@@ -15,7 +15,12 @@ import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import TuneIcon from "@mui/icons-material/Tune";
 import { useNavigate } from "react-router-dom";
-import { connectGmail } from "../services/gmailAuthService";
+
+import {
+  connectGmail,
+  disconnectGmail,
+  checkAuthStatus,
+} from "../services/gmailAuthService";
 import { getEmails, seedEmails, getGmailEmails } from "../services/emailService";
 import type { EmailItem } from "../types/email";
 import { saveSelectedEmailBody } from "../services/selectedEmail";
@@ -25,10 +30,12 @@ let INBOX_MEM_CACHE: {
   emails: EmailItem[] | null;
   selectedEmailId: string | null;
   source: "gmail" | "demo" | null;
+  gmailConnected: boolean;
 } = {
   emails: null,
   selectedEmailId: null,
   source: null,
+  gmailConnected: false,
 };
 
 export default function Inbox() {
@@ -40,6 +47,10 @@ export default function Inbox() {
   );
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ✅ Gmail connected state (controls button color + text)
+  const [gmailConnected, setGmailConnected] = useState(INBOX_MEM_CACHE.gmailConnected);
+
   const [selectedEmail, setSelectedEmail] = useState<EmailItem | null>(() => {
     if (!INBOX_MEM_CACHE.emails?.length) return null;
     const found = INBOX_MEM_CACHE.selectedEmailId
@@ -70,10 +81,13 @@ export default function Inbox() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const applyList = (list: EmailItem[], source: "gmail" | "demo") => {
+  const applyList = (list: EmailItem[], source: "gmail" | "demo", connected = false) => {
     setEmails(list);
     INBOX_MEM_CACHE.emails = list;
     INBOX_MEM_CACHE.source = source;
+
+    setGmailConnected(connected);
+    INBOX_MEM_CACHE.gmailConnected = connected;
 
     // keep selection stable
     const preferId = INBOX_MEM_CACHE.selectedEmailId;
@@ -87,23 +101,36 @@ export default function Inbox() {
     // ✅ if cache exists and not forcing refresh → instant
     if (!force && INBOX_MEM_CACHE.emails && INBOX_MEM_CACHE.emails.length > 0) {
       setEmails(INBOX_MEM_CACHE.emails);
+      setGmailConnected(INBOX_MEM_CACHE.gmailConnected);
+
       const preferId = INBOX_MEM_CACHE.selectedEmailId;
       const nextSelected =
         (preferId ? INBOX_MEM_CACHE.emails.find((e) => e.id === preferId) : null) ??
         INBOX_MEM_CACHE.emails[0] ??
         null;
+
       setSelectedEmail(nextSelected);
       return;
     }
 
     setLoading(true);
     try {
+      // ✅ sync connection status from backend
+      try {
+        const isConnected = await checkAuthStatus();
+        setGmailConnected(isConnected);
+        INBOX_MEM_CACHE.gmailConnected = isConnected;
+      } catch {
+        // ignore
+      }
+
       // ✅ try Gmail first
       try {
         const gmailRes = await getGmailEmails(); // { connected, emails }
-        if (gmailRes?.connected && Array.isArray(gmailRes.emails) && gmailRes.emails.length >= 0) {
-          applyList(gmailRes.emails, "gmail");
-          return;
+
+        if (gmailRes && Array.isArray(gmailRes.emails)) {
+          applyList(gmailRes.emails, gmailRes.connected ? "gmail" : "demo", !!gmailRes.connected);
+          if (gmailRes.connected) return;
         }
       } catch {
         // ignore -> fallback to demo
@@ -111,7 +138,7 @@ export default function Inbox() {
 
       // ✅ fallback to demo emails
       const demoList = await getEmails();
-      applyList(demoList, "demo");
+      applyList(demoList, "demo", false);
     } finally {
       setLoading(false);
     }
@@ -126,7 +153,6 @@ export default function Inbox() {
     setLoading(true);
     try {
       await seedEmails();
-      // after seed, force refresh but still store in cache
       await load(true);
     } finally {
       setLoading(false);
@@ -139,6 +165,42 @@ export default function Inbox() {
     navigate("/analyzer");
   };
 
+  // ✅ CONNECTED button click => disconnect
+  // ✅ NOT connected => connect
+  const onToggleGmail = async () => {
+    if (loading) return;
+
+    if (gmailConnected) {
+      setLoading(true);
+      try {
+        await disconnectGmail();
+
+        // Re-check from backend (real status)
+        let isConnected = false;
+        try {
+          isConnected = await checkAuthStatus();
+        } catch {
+          isConnected = false;
+        }
+
+        setGmailConnected(isConnected);
+        INBOX_MEM_CACHE.gmailConnected = isConnected;
+
+        // If disconnected, clear cache & reload demo
+        if (!isConnected) {
+          INBOX_MEM_CACHE.emails = null;
+          INBOX_MEM_CACHE.selectedEmailId = null;
+          INBOX_MEM_CACHE.source = "demo";
+          await load(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      connectGmail(); // redirects
+    }
+  };
+
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: "1fr 520px", gap: 2 }}>
       {/* LEFT: Inbox list */}
@@ -148,8 +210,29 @@ export default function Inbox() {
             Inbox
           </Typography>
 
-          <Button variant="contained" color="error" onClick={connectGmail}>
-            Connect email account
+          {/* ✅ Connected => GREEN + clickable to disconnect */}
+          <Button
+            variant="contained"
+            onClick={onToggleGmail}
+            disabled={loading} // ✅ only disable while loading
+            title={gmailConnected ? "Click to disconnect" : "Click to connect"}
+            sx={{
+              bgcolor: gmailConnected ? "#2e7d32" : "#d32f2f",
+              color: "#fff",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              "&:hover": {
+                bgcolor: gmailConnected ? "#1b5e20" : "#b71c1c",
+              },
+              // ✅ keep color even when disabled (loading state)
+              "&.Mui-disabled": {
+                bgcolor: gmailConnected ? "#2e7d32" : "#d32f2f",
+                color: "#fff",
+                opacity: 1,
+              },
+            }}
+          >
+            {gmailConnected ? "CONNECTED" : "Connect email account"}
           </Button>
         </Box>
 
@@ -221,7 +304,7 @@ export default function Inbox() {
                     }}
                     onClick={() => {
                       setSelectedEmail(e);
-                      INBOX_MEM_CACHE.selectedEmailId = e.id; // ✅ remember selection
+                      INBOX_MEM_CACHE.selectedEmailId = e.id;
                     }}
                   >
                     <Checkbox
