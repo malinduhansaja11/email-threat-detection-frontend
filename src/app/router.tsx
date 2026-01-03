@@ -12,6 +12,8 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <Inbox /> },
+      
+      { path: "inbox", element: <Inbox /> },
       { path: "analyzer", element: <Analyzer /> },
       { path: "history", element: <History /> },
       { path: "reports", element: <Reports /> },

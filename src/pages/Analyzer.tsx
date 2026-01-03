@@ -5,16 +5,30 @@ import ResultsPanel from "../components/analyzer/ResultsPanel.tsx";
 import HighlightedBody from "../components/analyzer/HighlightedBody.tsx";
 import { analyzeEmailBody } from "../services/analyzerService";
 import type { AnalyzeResponse } from "../types/analyzer";
+import { useEffect } from "react";
+import { loadSelectedEmailBody, clearSelectedEmailBody } from "../services/selectedEmail";
+
 
 export default function Analyzer() {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
+  useEffect(() => {
+  const saved = loadSelectedEmailBody();
+  if (saved) {
+    setBody(saved);
+    clearSelectedEmailBody();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+
   const onAnalyze = async () => {
     setLoading(true);
     try {
       const res = await analyzeEmailBody(body);
+      console.log("Analyze response:", res);
       setResult(res);
     } finally {
       setLoading(false);
