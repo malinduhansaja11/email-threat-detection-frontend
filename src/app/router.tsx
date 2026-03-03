@@ -13,11 +13,13 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Inbox /> },
       
+      
       { path: "inbox", element: <Inbox /> },
       { path: "analyzer", element: <Analyzer /> },
       { path: "history", element: <History /> },
       { path: "reports", element: <Reports /> },
       { path: "settings", element: <Settings /> },
+      { path: "/history", element: <History /> }
     ],
   },
 ]);

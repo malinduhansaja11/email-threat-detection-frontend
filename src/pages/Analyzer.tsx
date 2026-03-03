@@ -9,11 +9,14 @@ import {
   Divider,
   Paper,
 } from "@mui/material";
+
 import { useEffect, useMemo, useState } from "react";
 
 import EmailInputCard from "../components/analyzer/EmailInputCard.tsx";
 import ResultsPanel from "../components/analyzer/ResultsPanel.tsx";
 import HighlightedBody from "../components/analyzer/HighlightedBody.tsx";
+import { saveHistory } from "../services/historyService";
+
 
 import { analyzeEmailBody } from "../services/analyzerService";
 import type { AnalyzeResponse } from "../types/analyzer";
@@ -146,6 +149,8 @@ export default function Analyzer() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
+  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+
   useEffect(() => {
     const saved = loadSelectedEmailBody();
     if (saved) {
@@ -155,16 +160,36 @@ export default function Analyzer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onAnalyze = async () => {
-    setLoading(true);
-    try {
-      const res = await analyzeEmailBody(body);
-      setResult(res);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const onAnalyze = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const res = await analyzeEmailBody(body);
+  //     setResult(res);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
+  const onAnalyze = async () => {
+  try {
+    const data = await analyzeEmailBody(body);
+    setResult(data);
+
+    // ✅ Save to Firebase History
+await saveHistory({
+  source: selectedEmail ? "gmail" : "demo",
+  sender: selectedEmail?.sender ?? "manual",
+  subject: selectedEmail?.subject ?? "Manual Analyze",
+  risk_score: data.risk_score,
+  obf_tokens: data.obf_tokens,
+});
+
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+ 
   const section = useMemo(() => SECTION_META[activeSection], [activeSection]);
 
   return (
