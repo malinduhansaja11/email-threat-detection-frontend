@@ -51,7 +51,7 @@ const SECTION_META: Record<
     badge: "Timing",
   },
   phishingLinks: {
-    title: "Phishing Link Analyzer",
+    title: "URL Analyzer",
     desc: "Extract and score links for risky domains, redirects and phishing indicators.",
     icon: <LinkOutlinedIcon />,
     badge: "Links",
@@ -313,3 +313,6 @@ export default function Analyzer() {
     </Box>
   );
 }
+
+
+

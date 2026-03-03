@@ -16,3 +16,13 @@ export async function analyzeEmailBody(body: string): Promise<AnalyzeResponse> {
 
   return res.json();
 }
+
+
+
+
+
+
+
+
+
+

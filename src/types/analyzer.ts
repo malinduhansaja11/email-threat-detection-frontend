@@ -7,3 +7,10 @@ export interface AnalyzeResponse {
   obf_tokens: string[];
   risk_score: number;     // 0..100
 }
+
+
+ export interface AnalyzeResponse {
+  verdict: "Safe" | "Suspicious" | "Malicious";
+  score: number;
+  indicators: string[];
+}
