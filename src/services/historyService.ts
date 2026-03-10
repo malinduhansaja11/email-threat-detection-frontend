@@ -12,26 +12,39 @@ import {
 
 export type HistoryItem = {
   id: string;
+  type: "obfuscation" | "header" | "time" | "phishingLinks";
   source: string;
   sender?: string;
   subject?: string;
-  risk_score: number;
-  obf_tokens: string[];
+
+  // obfuscation
+  risk_score?: number;
+  obf_tokens?: string[];
+
+  // header
+  spf?: string;
+  dkim?: string;
+  dmarc?: string;
+  sender_domain?: string;
+  header_count?: number;
+
+  // time
+  email_date?: string;
+  body_preview?: string;
+
+  // url
+  url_count?: number;
+  url_verdict?: string;
+
   created_at?: Timestamp | Date | any;
 };
 
 const collectionRef = collection(db, "analysis_history");
 
-export async function saveHistory(data: {
-  source: string;
-  sender?: string;
-  subject?: string;
-  risk_score: number;
-  obf_tokens: string[];
-}) {
+export async function saveHistory(data: Omit<HistoryItem, "id" | "created_at">) {
   await addDoc(collectionRef, {
     ...data,
-    created_at: new Date(), // simple timestamp (ok for now)
+    created_at: new Date(),
   });
 }
 
@@ -43,11 +56,21 @@ export async function getHistory(): Promise<HistoryItem[]> {
     const raw = d.data() as Omit<HistoryItem, "id">;
     return {
       id: d.id,
+      type: raw.type,
       source: raw.source,
       sender: raw.sender,
       subject: raw.subject,
-      risk_score: raw.risk_score ?? 0,
+      risk_score: raw.risk_score,
       obf_tokens: raw.obf_tokens ?? [],
+      spf: raw.spf,
+      dkim: raw.dkim,
+      dmarc: raw.dmarc,
+      sender_domain: raw.sender_domain,
+      header_count: raw.header_count,
+      email_date: raw.email_date,
+      body_preview: raw.body_preview,
+      url_count: raw.url_count,
+      url_verdict: raw.url_verdict,
       created_at: raw.created_at,
     };
   });

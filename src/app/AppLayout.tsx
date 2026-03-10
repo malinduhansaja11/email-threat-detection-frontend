@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
   Box,
   Drawer,
@@ -9,12 +9,14 @@ import {
   Toolbar,
   AppBar,
   Typography,
+  Button,
 } from "@mui/material";
 import InboxIcon from "@mui/icons-material/Inbox";
 import SearchIcon from "@mui/icons-material/Search";
 import HistoryIcon from "@mui/icons-material/History";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SettingsIcon from "@mui/icons-material/Settings";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 const drawerWidth = 240;
 
@@ -27,13 +29,41 @@ const navItems = [
 ];
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Clear authentication data
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // Redirect to login page
+    navigate("/login");
+  };
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
-        <Toolbar>
+        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
           <Typography variant="h6" noWrap component="div">
             AI-BASED E-MAIL THREAT DETECTION SYSTEM
           </Typography>
+
+          <Button
+            color="inherit"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+            variant="outlined"
+            sx={{
+              borderColor: "rgba(255,255,255,0.5)",
+              color: "white",
+              "&:hover": {
+                borderColor: "white",
+                backgroundColor: "rgba(255,255,255,0.1)",
+              },
+            }}
+          >
+            Logout
+          </Button>
         </Toolbar>
       </AppBar>
 
@@ -42,7 +72,10 @@ export default function AppLayout() {
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: "border-box" },
+          [`& .MuiDrawer-paper`]: {
+            width: drawerWidth,
+            boxSizing: "border-box",
+          },
         }}
       >
         <Toolbar />
@@ -62,7 +95,7 @@ export default function AppLayout() {
         </List>
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box component="main" sx={{ flexGrow: 1,}}>
         <Toolbar />
         <Outlet />
       </Box>
