@@ -394,9 +394,6 @@ export default function Inbox() {
         </Alert>
       )}
 
-      {/* Scan summary bar */}
-      {scanResult && <ScanSummaryBar result={scanResult} />}
-
       {/* Main 2-column layout */}
       <Box
         sx={{
@@ -431,9 +428,9 @@ export default function Inbox() {
               title={sortByRisk ? "Sorted by risk — click to reset" : "Sort by risk level"}
             >
               <Button
-                size="small"
+                size="medium"
                 variant={sortByRisk ? "contained" : "outlined"}
-                startIcon={<SortIcon />}
+                
                 onClick={() => setSortByRisk((v) => !v)}
                 sx={{ whiteSpace: "nowrap", borderRadius: 2, fontWeight: 700 }}
               >
@@ -533,31 +530,9 @@ export default function Inbox() {
                       </span>
                     </Typography>
 
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {e.threat ? (
-                        <ThreatBadge threat={e.threat} />
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">
-                          —
-                        </Typography>
-                      )}
-                    </Box>
+                  
 
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {e.threat?.scanned ? (
-                        <Chip
-                          label={e.threat.risk_level}
-                          size="small"
-                          color={riskChipColor(e.threat.risk_level)}
-                          variant="outlined"
-                          sx={{ fontWeight: 700, fontSize: 10, height: 22 }}
-                        />
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">
-                          —
-                        </Typography>
-                      )}
-                    </Box>
+                    
                   </Box>
                 ))}
               </Box>

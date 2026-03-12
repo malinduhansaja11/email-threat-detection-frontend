@@ -1,10 +1,20 @@
 // src/components/analyzer/TemporalEvasionPanel.tsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Full UI for the "Time-based Analyzer" tab inside the existing Analyzer page.
-// Replaces the "Coming Next" placeholder for the `time` section.
+// Time-based Analyzer — Global Temporal Evasion Detection
+// Kaveesha Research | Sri Lanka CS Specialization
+
+import { useState, useCallback } from "react";
+import type { EmailItem } from "../../types/email";
+import type {
+  BatchSummary,
+  TemporalResult,
+  RiskLevel,
+} from "../../types/temporalEvasion";
+import {
+  analyzeTemporalSingle,
+  analyzeTemporalBatch,
+} from "../../services/temporalEvasionService";
 
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -12,472 +22,880 @@ import {
   Chip,
   CircularProgress,
   Divider,
-  Grid,
-  InputAdornment,
-  LinearProgress,
-  Paper,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 
-import AccessTimeIcon           from "@mui/icons-material/AccessTime";
-import CheckCircleOutlineIcon   from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutlineIcon         from "@mui/icons-material/ErrorOutline";
-import InfoOutlinedIcon         from "@mui/icons-material/InfoOutlined";
-import ScheduleOutlinedIcon     from "@mui/icons-material/ScheduleOutlined";
-import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-import { useState } from "react";
-import { analyzeTemporalEvasion } from "../../services/temporalEvasionService";
-import type {
-  TemporalEvasionRequest,
-  TemporalEvasionResponse,
-  TemporalFeatures,
+const RISK_COLORS: Record<
   RiskLevel,
-} from "../../types/temporalEvasion";
-
-// ── colour palette ────────────────────────────────────────────────────────────
-
-const RISK_PALETTE: Record<RiskLevel, { bg: string; border: string; text: string; label: string }> = {
-  safe:     { bg: "#e6f4ea", border: "#0f9d58", text: "#0f9d58", label: "Safe"      },
-  low:      { bg: "#fef3e2", border: "#e37400", text: "#e37400", label: "Low Risk"  },
-  medium:   { bg: "#fff8e1", border: "#e65100", text: "#e65100", label: "Medium"    },
-  high:     { bg: "#fce8e6", border: "#d93025", text: "#d93025", label: "High Risk" },
-  critical: { bg: "#fce8e6", border: "#b31412", text: "#b31412", label: "Critical"  },
+  { bg: string; text: string; border: string; dot: string; solid: string }
+> = {
+  LOW: {
+    bg: "#ecfdf5",
+    text: "#047857",
+    border: "#a7f3d0",
+    dot: "#10b981",
+    solid: "#10b981",
+  },
+  MEDIUM: {
+    bg: "#fffbeb",
+    text: "#b45309",
+    border: "#fcd34d",
+    dot: "#f59e0b",
+    solid: "#f59e0b",
+  },
+  HIGH: {
+    bg: "#fff7ed",
+    text: "#c2410c",
+    border: "#fdba74",
+    dot: "#f97316",
+    solid: "#f97316",
+  },
+  CRITICAL: {
+    bg: "#ffffff",
+    text: "#b91c1c",
+    border: "#000000",
+    dot: "#ef4444",
+    solid: "#ef4444",
+  },
 };
 
-// ── sample data ───────────────────────────────────────────────────────────────
-
-const SAMPLE_EVASION: TemporalEvasionRequest = {
-  subject:     "URGENT ACTION REQUIRED — account will be suspended in 2 hours",
-  body:        "Click here immediately to reset your password or lose access to your account forever.",
-  sent_at:     "2025-03-10T03:14:00",
-  burst_count: 22,
+const RISK_ICON: Record<RiskLevel, string> = {
+  LOW: "✓",
+  MEDIUM: "⚠",
+  HIGH: "▲",
+  CRITICAL: "✕",
 };
 
-const SAMPLE_GHOST: TemporalEvasionRequest = {
-  subject:     "System Notification — routine maintenance scheduled",
-  body:        "No action needed. Maintenance window at midnight. This is an automated message.",
-  sent_at:     "2025-03-09T00:05:00",
-  burst_count: 150,
-};
+function riskBar(confidence: number, risk: RiskLevel) {
+  const color =
+    risk === "CRITICAL"
+      ? "#ef4444"
+      : risk === "HIGH"
+      ? "#f97316"
+      : risk === "MEDIUM"
+      ? "#f59e0b"
+      : "#10b981";
 
-const SAMPLE_CLEAN: TemporalEvasionRequest = {
-  subject:     "Project Update — specialization forms attached for review",
-  body:        "Hi team, please find the 2026 Q1 report attached. Let me know if you have any questions.",
-  sent_at:     "2025-03-10T10:30:00",
-  burst_count: 1,
-};
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-function nowIso(): string {
-  return new Date().toISOString().slice(0, 16);
-}
-
-function hourLabel(h: number): string {
-  const ampm = h < 12 ? "AM" : "PM";
-  const h12  = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:00 ${ampm}`;
-}
-
-const DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-
-// ── sub-components ────────────────────────────────────────────────────────────
-
-function VerdictBanner({ result }: { result: TemporalEvasionResponse }) {
-  const pal = RISK_PALETTE[result.risk_level];
   return (
     <Box
       sx={{
-        borderRadius: 3,
-        border: `1.5px solid ${pal.border}`,
-        bgcolor: pal.bg,
-        p: 2.5,
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
+        width: "100%",
+        bgcolor: "#f3f4f6",
+        borderRadius: 999,
+        height: 6,
+        mt: 1,
+        overflow: "hidden",
       }}
     >
-      {result.is_threat
-        ? <WarningAmberOutlinedIcon sx={{ fontSize: 44, color: pal.text }} />
-        : <CheckCircleOutlineIcon  sx={{ fontSize: 44, color: pal.text }} />}
-      <Box>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <Typography variant="h5" fontWeight={900} sx={{ color: pal.text }}>
-            {result.is_threat ? "⚠ Temporal Evasion Detected" : "✓ Normal Timing Pattern"}
-          </Typography>
-          <Chip
-            label={pal.label} size="small"
-            sx={{ bgcolor: pal.border, color: "#fff", fontWeight: 800, borderRadius: 2 }}
-          />
-        </Stack>
-        <Typography variant="body2" sx={{ mt: 0.4, color: pal.text }}>
-          {result.threat_type}&nbsp;·&nbsp;Confidence: {result.confidence.toFixed(1)}%
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Model: {result.model_used}
-        </Typography>
-      </Box>
+      <Box
+        sx={{
+          height: 6,
+          borderRadius: 999,
+          width: `${confidence}%`,
+          bgcolor: color,
+          transition: "width 700ms ease",
+        }}
+      />
     </Box>
   );
 }
 
-function TemporalRadar({ tf }: { tf: TemporalFeatures }) {
-  const hour      = Math.round(tf.hour);
-  const dow       = Math.round(tf.day_of_week);
-  const driftH    = (tf.time_drift / 3600).toFixed(1);
-  const burstCnt  = Math.round(tf.burst_count);
+function formatDrift(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  return `${(seconds / 3600).toFixed(1)}h`;
+}
 
-  type FlagItem = { label: string; value: string; flag: boolean; tip: string };
-  const items: FlagItem[] = [
-    {
-      label: "Send Hour",
-      value: hourLabel(hour),
-      flag:  tf.is_suspicious_time === 1,
-      tip:   "Suspicious if between 10 PM – 4 AM",
-    },
-    {
-      label: "Day of Week",
-      value: `${DAY_NAMES[dow]}${tf.is_weekend === 1 ? " (Weekend)" : ""}`,
-      flag:  tf.is_weekend === 1,
-      tip:   "Weekend sends are less common for legitimate senders",
-    },
-    {
-      label: "Time Drift",
-      value: `${driftH} h from 9 AM baseline`,
-      flag:  tf.time_drift > 3600,
-      tip:   "Drift > 1 h from normal business hours",
-    },
-    {
-      label: "Burst Count",
-      value: `${burstCnt} emails/hr`,
-      flag:  tf.is_burst === 1,
-      tip:   "Burst > 5 emails/hr = suspicious rate",
-    },
-    {
-      label: "Anomaly Flag",
-      value: tf.is_anomaly === 1 ? "Triggered" : "Clear",
-      flag:  tf.is_anomaly === 1,
-      tip:   "Set when off-hours + burst + urgency keywords all present",
-    },
-  ];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+type FlexibleEmail = EmailItem & {
+  sender?: string;
+  from?: string;
+  date?: string;
+  received_at?: string;
+};
+
+function getEmailSender(email?: FlexibleEmail | null): string {
+  return email?.sender ?? email?.from ?? "";
+}
+
+function getEmailDate(email?: FlexibleEmail | null): string {
+  return email?.date ?? email?.received_at ?? "";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TemporalClockFace({ hour }: { hour: number }) {
+  const angle = (hour / 24) * 360 - 90;
+  const rad = (angle * Math.PI) / 180;
+  const cx = 40,
+    cy = 40,
+    r = 28;
+  const hx = cx + r * Math.cos(rad);
+  const hy = cy + r * Math.sin(rad);
+  const suspicious = hour < 6 || hour >= 22;
 
   return (
-    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-      <CardContent>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-          <AccessTimeIcon fontSize="small" color="action" />
-          <Typography variant="subtitle2" fontWeight={800}>Temporal Signal Breakdown</Typography>
-        </Stack>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <circle
+        cx={cx}
+        cy={cy}
+        r={38}
+        fill="none"
+        stroke={suspicious ? "#fca5a5" : "#d1fae5"}
+        strokeWidth="1.5"
+      />
+      <path
+        d={`M ${cx + 38 * Math.cos((330 * Math.PI) / 180)} ${
+          cy + 38 * Math.sin((330 * Math.PI) / 180)
+        } A 38 38 0 0 1 ${cx + 38 * Math.cos((450 * Math.PI) / 180)} ${
+          cy + 38 * Math.sin((450 * Math.PI) / 180)
+        }`}
+        fill="none"
+        stroke="#fca5a5"
+        strokeWidth="5"
+        opacity="0.4"
+      />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill={suspicious ? "#fff1f2" : "#f0fdf4"}
+        stroke={suspicious ? "#f87171" : "#6ee7b7"}
+        strokeWidth="1"
+      />
+      {Array.from({ length: 24 }, (_, i) => {
+        const a = ((i / 24) * 360 - 90) * (Math.PI / 180);
+        const inner = i % 6 === 0 ? 20 : 24;
+        return (
+          <line
+            key={i}
+            x1={cx + inner * Math.cos(a)}
+            y1={cy + inner * Math.sin(a)}
+            x2={cx + 28 * Math.cos(a)}
+            y2={cy + 28 * Math.sin(a)}
+            stroke={suspicious ? "#f87171" : "#6ee7b7"}
+            strokeWidth={i % 6 === 0 ? 2 : 0.8}
+            opacity="0.7"
+          />
+        );
+      })}
+      <line
+        x1={cx}
+        y1={cy}
+        x2={hx}
+        y2={hy}
+        stroke={suspicious ? "#dc2626" : "#059669"}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <circle cx={cx} cy={cy} r="2.5" fill={suspicious ? "#dc2626" : "#059669"} />
+      <text
+        x={cx}
+        y={cy + 14}
+        textAnchor="middle"
+        fontSize="8"
+        fill={suspicious ? "#dc2626" : "#065f46"}
+        fontWeight="700"
+      >
+        {String(hour).padStart(2, "0")}:00
+      </text>
+    </svg>
+  );
+}
 
-        <Stack spacing={1.4}>
-          {items.map((item) => (
-            <Tooltip key={item.label} title={item.tip} placement="right">
-              <Box>
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.4 }}>
-                  <Typography variant="caption" fontWeight={600}>{item.label}</Typography>
-                  <Stack direction="row" spacing={0.6} alignItems="center">
-                    <Typography
-                      variant="caption"
-                      fontWeight={700}
-                      sx={{ color: item.flag ? "#d93025" : "#0f9d58" }}
-                    >
-                      {item.value}
-                    </Typography>
-                    {item.flag && (
-                      <WarningAmberOutlinedIcon sx={{ fontSize: 13, color: "#d93025" }} />
-                    )}
-                  </Stack>
+function MetricPill({
+  label,
+  value,
+  alert,
+}: {
+  label: string;
+  value: string | number;
+  alert?: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        px: 1.5,
+        py: 1.25,
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: alert ? "#fecaca" : "#e5e7eb",
+        bgcolor: alert ? "#fef2f2" : "#f9fafb",
+        minWidth: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: 1,
+          color: alert ? "#ef4444" : "#9ca3af",
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography
+        sx={{
+          fontSize: 13,
+          fontWeight: 800,
+          mt: 0.5,
+          color: alert ? "#b91c1c" : "#374151",
+          textAlign: "center",
+        }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
+function SingleResultCard({ result }: { result: TemporalResult }) {
+  const c = RISK_COLORS[result.risk_level];
+  const feats = result.temporal;
+
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 3,
+        border: "1px solid",
+        borderColor: c.border,
+        bgcolor: c.bg,
+      }}
+    >
+      <CardContent sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems={{ xs: "flex-start", md: "center" }}
+          >
+            <TemporalClockFace hour={feats.hour} />
+
+            <Box
+              sx={{
+                flex: 1,
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  sm: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: 1,
+                width: "100%",
+              }}
+            >
+              <MetricPill label="Day" value={DAYS[feats.day_of_week] ?? "?"} />
+              <MetricPill
+                label="Drift"
+                value={formatDrift(feats.time_drift)}
+                alert={feats.time_drift > 3600}
+              />
+              <MetricPill
+                label="Burst"
+                value={feats.burst_count}
+                alert={feats.is_burst === 1}
+              />
+              <MetricPill
+                label="Hours"
+                value={feats.is_suspicious_time ? "Off-hours" : "Business"}
+                alert={!!feats.is_suspicious_time}
+              />
+              <MetricPill
+                label="Weekend"
+                value={feats.is_weekend ? "Yes" : "No"}
+                alert={!!feats.is_weekend}
+              />
+              <MetricPill
+                label="Anomaly"
+                value={feats.is_anomaly ? "Ghost" : "None"}
+                alert={!!feats.is_anomaly}
+              />
+            </Box>
+          </Stack>
+
+          {result.flags.length > 0 && (
+            <Stack spacing={1}>
+              {result.flags.map((flag, i) => (
+                <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+                  <Typography sx={{ color: "#f87171", fontSize: 12, mt: "2px" }}>
+                    ⚑
+                  </Typography>
+                  <Typography sx={{ fontSize: 21, color: "#b91c1c" }}>
+                    {flag}
+                  </Typography>
                 </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={item.flag ? 100 : 20}
-                  sx={{
-                    height: 6, borderRadius: 4, bgcolor: "#f1f3f4",
-                    "& .MuiLinearProgress-bar": {
-                      borderRadius: 4,
-                      bgcolor: item.flag ? "#d93025" : "#0f9d58",
-                    },
-                  }}
-                />
-              </Box>
-            </Tooltip>
-          ))}
-        </Stack>
-
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: "block" }}>
-          Red = suspicious signal · Green = normal · Hover for explanation
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-}
-
-function IndicatorsCard({ indicators }: { indicators: string[] }) {
-  return (
-    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-      <CardContent>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-          <InfoOutlinedIcon fontSize="small" color="action" />
-          <Typography variant="subtitle2" fontWeight={800}>Analysis Indicators</Typography>
-        </Stack>
-        <Stack spacing={0.9}>
-          {indicators.map((line, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
-              <Typography variant="body2">{line}</Typography>
+              ))}
             </Stack>
-          ))}
+          )}
         </Stack>
       </CardContent>
     </Card>
   );
 }
 
-function RawFeaturesCard({ tf }: { tf: TemporalFeatures }) {
-  const rows: [string, string][] = [
-    ["hour",               tf.hour.toFixed(0)],
-    ["hour_sin",           tf.hour_sin.toFixed(4)],
-    ["hour_cos",           tf.hour_cos.toFixed(4)],
-    ["is_suspicious_time", tf.is_suspicious_time.toFixed(0)],
-    ["is_burst",           tf.is_burst.toFixed(0)],
-    ["time_drift (s)",     tf.time_drift.toFixed(0)],
-    ["day_of_week",        tf.day_of_week.toFixed(0)],
-    ["is_weekend",         tf.is_weekend.toFixed(0)],
-    ["arrival_epoch",      tf.arrival_epoch.toFixed(0)],
-    ["burst_count",        tf.burst_count.toFixed(0)],
-    ["is_anomaly",         tf.is_anomaly.toFixed(0)],
+function BatchDonut({ summary }: { summary: BatchSummary }) {
+  const { total, critical, high, medium, low } = summary;
+  if (total === 0) return null;
+
+  const r = 32,
+    cx = 40,
+    cy = 40,
+    stroke = 14;
+  const circ = 2 * Math.PI * r;
+
+  type Seg = { label: string; count: number; color: string };
+  const segments: Seg[] = [
+    { label: "Critical", count: critical, color: "#ef4444" },
+    { label: "High", count: high, color: "#f97316" },
+    { label: "Medium", count: medium, color: "#f59e0b" },
+    { label: "Low", count: low, color: "#10b981" },
   ];
 
-  return (
-    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-      <CardContent>
-        <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
-          Raw Feature Vector (11 dims)
-        </Typography>
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px" }}>
-          {rows.map(([name, val]) => (
-            <Stack key={name} direction="row" justifyContent="space-between">
-              <Typography variant="caption" color="text.secondary">{name}</Typography>
-              <Typography variant="caption" fontWeight={700}>{val}</Typography>
-            </Stack>
-          ))}
-        </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-          These 11 values are concatenated with TF-IDF text features before inference.
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Main component ─────────────────────────────────────────────────────────────
-
-export default function TemporalEvasionPanel() {
-  const [form, setForm] = useState<TemporalEvasionRequest>({
-    subject:     "",
-    body:        "",
-    sent_at:     nowIso(),
-    burst_count: 1,
+  let offset = 0;
+  const arcs = segments.map((seg) => {
+    const pct = seg.count / total;
+    const dash = pct * circ;
+    const arc = { ...seg, dash, offset };
+    offset += dash;
+    return arc;
   });
 
+  return (
+    <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
+        {arcs.map((a, i) => (
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke={a.color}
+            strokeWidth={stroke}
+            strokeDasharray={`${a.dash} ${circ - a.dash}`}
+            strokeDashoffset={-a.offset + circ * 0.25}
+            strokeLinecap="butt"
+          />
+        ))}
+        <text
+          x={cx}
+          y={cy + 1}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize="11"
+          fontWeight="800"
+          fill="#111827"
+        >
+          {total}
+        </text>
+        <text x={cx} y={cy + 12} textAnchor="middle" fontSize="6" fill="#6b7280">
+          emails
+        </text>
+      </svg>
+
+      <Stack spacing={1}>
+        {segments.map((s) => (
+          <Stack key={s.label} direction="row" spacing={1} alignItems="center">
+            <Box
+              sx={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                bgcolor: s.color,
+                flexShrink: 0,
+              }}
+            />
+            <Typography sx={{ fontSize: 12, color: "#6b7280", width: 60 }}>
+              {s.label}
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 800, color: "#111827" }}>
+              {s.count}
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+    </Stack>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main exported component
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface Props {
+  selectedEmail?: FlexibleEmail | null;
+  inboxEmails?: FlexibleEmail[];
+}
+
+type Mode = "single" | "batch";
+
+export default function TemporalEvasionPanel({
+  selectedEmail,
+  inboxEmails = [],
+}: Props) {
+  const [mode, setMode] = useState<Mode>("single");
   const [loading, setLoading] = useState(false);
-  const [result,  setResult]  = useState<TemporalEvasionResponse | null>(null);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [singleResult, setSingleResult] = useState<TemporalResult | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchSummary | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const setStr = (field: keyof TemporalEvasionRequest) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm((p) => ({ ...p, [field]: e.target.value }));
+  const runSingle = useCallback(async () => {
+    if (!selectedEmail) return;
 
-  const loadSample = (sample: TemporalEvasionRequest) => {
-    setForm(sample);
-    setResult(null);
-    setError(null);
-  };
-
-  const onAnalyze = async () => {
     setLoading(true);
     setError(null);
-    setResult(null);
+    setSingleResult(null);
+
     try {
-      const res = await analyzeTemporalEvasion({
-        ...form,
-        burst_count: Number(form.burst_count),
+      const res = await analyzeTemporalSingle({
+        subject: selectedEmail.subject ?? "",
+        body: selectedEmail.body ?? "",
+        date: getEmailDate(selectedEmail),
+        sender: getEmailSender(selectedEmail),
+        burst_count: 1,
       });
-      setResult(res);
-    } catch (err: any) {
-      setError(err?.message ?? "Request failed");
+      setSingleResult(res);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Analysis failed");
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedEmail]);
 
-  const canAnalyze = !loading && (!!form.subject.trim() || !!form.body.trim());
+  const runBatch = useCallback(async () => {
+    if (inboxEmails.length === 0) return;
+
+    setLoading(true);
+    setError(null);
+    setBatchResult(null);
+
+    try {
+      const res = await analyzeTemporalBatch({
+        emails: inboxEmails.map((e) => ({
+          id: e.id ?? "",
+          subject: e.subject ?? "",
+          body: e.body ?? "",
+          date: getEmailDate(e),
+          sender: getEmailSender(e),
+        })),
+      });
+      setBatchResult(res);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Batch analysis failed");
+    } finally {
+      setLoading(false);
+    }
+  }, [inboxEmails]);
+
+  const handleAnalyze = () => (mode === "single" ? runSingle() : runBatch());
+
+  const sortedBatch =
+    batchResult?.results.slice().sort((a, b) => b.confidence - a.confidence) ?? [];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-
-      {/* ── Input card ─────────────────────────────────────────────────── */}
-      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-        <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-            <ScheduleOutlinedIcon color="primary" />
-            <Typography variant="h6" fontWeight={900}>Time-Based Evasion Analyzer</Typography>
-          </Stack>
-
-          <Grid container spacing={2}>
-            <Grid  size={{ xs: 12 }}>
-              <TextField
-                fullWidth label="Subject"
-                placeholder="Email subject line…"
-                value={form.subject}
-                onChange={setStr("subject")}
-                size="small"
-              />
-            </Grid>
-
-            <Grid  size={{ xs: 12 }}>
-              <TextField
-                fullWidth multiline minRows={5}
-                label="Email Body"
-                placeholder="Paste the email body here…"
-                value={form.body}
-                onChange={setStr("body")}
-              />
-            </Grid>
-
-            <Grid  size={{ xs: 12, md: 6 }}>
-              <Tooltip title="When was the email sent? Paste or type an ISO-8601 datetime.">
-                <TextField
-                  fullWidth
-                  label="Sent At (date & time)"
-                  type="datetime-local"
-                  value={form.sent_at}
-                  onChange={setStr("sent_at")}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AccessTimeIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Tooltip>
-            </Grid>
-
-            <Grid  size={{ xs: 12, md: 6 }}>
-              <Tooltip title="How many emails arrived from this sender in the last hour? High counts signal burst behaviour.">
-                <TextField
-                  fullWidth
-                  label="Burst Count (emails/hr from same sender)"
-                  type="number"
-                  inputProps={{ min: 1, max: 500 }}
-                  value={form.burst_count}
-                  onChange={setStr("burst_count")}
-                  size="small"
-                />
-              </Tooltip>
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* Actions */}
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
-            <Button
-              variant="contained"
-              onClick={onAnalyze}
-              disabled={!canAnalyze}
-              startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
-              sx={{ borderRadius: 2, fontWeight: 800 }}
-            >
-              {loading ? "Analyzing…" : "Detect Temporal Evasion"}
-            </Button>
-
-            <Button variant="outlined" color="error"
-              onClick={() => loadSample(SAMPLE_EVASION)}
-              sx={{ borderRadius: 2, fontWeight: 700 }}>
-              Load Evasion Sample
-            </Button>
-
-            <Button variant="outlined" color="warning"
-              onClick={() => loadSample(SAMPLE_GHOST)}
-              sx={{ borderRadius: 2, fontWeight: 700 }}>
-              Load Ghost Anomaly
-            </Button>
-
-            <Button variant="outlined" color="success"
-              onClick={() => loadSample(SAMPLE_CLEAN)}
-              sx={{ borderRadius: 2, fontWeight: 700 }}>
-              Load Clean Sample
-            </Button>
-
-            <Button variant="text" color="inherit"
-              onClick={() => {
-                setForm({ subject:"", body:"", sent_at: nowIso(), burst_count: 1 });
-                setResult(null); setError(null);
-              }}
-              sx={{ borderRadius: 2 }}>
-              Clear
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
-
-      {/* ── Error ─────────────────────────────────────────────────────── */}
-      {error && (
-        <Alert severity="error" icon={<ErrorOutlineIcon />} sx={{ borderRadius: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* ── Scenario tip cards ────────────────────────────────────────── */}
-      {!result && !loading && (
-        <Paper elevation={0} sx={{
-          borderRadius: 3, border: "1px dashed", borderColor: "divider",
-          p: 2, bgcolor: "action.hover"
-        }}>
-          <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>
-            📋 What this module detects
-          </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs:"1fr", sm:"repeat(3,1fr)" }, gap: 1.5 }}>
-            {[
-              { icon: "🌙", title: "Off-Hours Sending", desc: "Emails sent between 10 PM – 4 AM to evade spam filters active during business hours." },
-              { icon: "⚡", title: "Burst Activity",    desc: "High volume from one sender in a short window — typical of automated spam campaigns." },
-              { icon: "👻", title: "Ghost Anomaly",     desc: "Neutral content + extreme timing signature. Evasion through temporal camouflage." },
-            ].map((c) => (
-              <Box key={c.title} sx={{ borderRadius: 2, border: "1px solid", borderColor: "divider", p: 1.5, bgcolor: "background.paper" }}>
-                <Typography variant="body2" fontWeight={800}>{c.icon} {c.title}</Typography>
-                <Typography variant="caption" color="text.secondary">{c.desc}</Typography>
-              </Box>
-            ))}
+    <Card
+      elevation={0}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        bgcolor: "#fff",
+        borderRadius: 3,
+        border: "1px solid",
+        borderColor: "#e5e7eb",
+        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+      }}
+    >
+      <Box
+        sx={{
+          px: 2.5,
+          py: 1.75,
+          borderBottom: "1px solid",
+          borderColor: "#f3f4f6",
+          background: "linear-gradient(to right, #f8fafc, #ffffff)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          <Typography sx={{ fontSize: 18 }}>⏱</Typography>
+          <Box>
+            <Typography sx={{ fontSize: 14, fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>
+              Time-based Analyzer
+            </Typography>
+            <Typography sx={{ fontSize: 10, color: "#9ca3af", lineHeight: 1.2 }}>
+              Global Temporal Evasion v1
+            </Typography>
           </Box>
-        </Paper>
-      )}
+        </Stack>
 
-      {/* ── Results ──────────────────────────────────────────────────── */}
-      {result && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <VerdictBanner result={result} />
-
-          <Grid container spacing={2}>
-            <Grid  size={{ xs: 12, md: 7 }}>
-              <Stack spacing={2}>
-                <IndicatorsCard indicators={result.indicators} />
-                <TemporalRadar   tf={result.temporal_features} />
-              </Stack>
-            </Grid>
-            <Grid  size={{ xs: 12, md: 5 }}>
-              <RawFeaturesCard tf={result.temporal_features} />
-            </Grid>
-          </Grid>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            bgcolor: "#f3f4f6",
+            borderRadius: 2,
+            p: 0.5,
+            gap: 0.5,
+          }}
+        >
+         
         </Box>
-      )}
-    </Box>
+      </Box>
+
+      <Box sx={{ flex: 1, overflowY: "auto", p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        {mode === "single" && selectedEmail ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 1.5,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "#eff6ff",
+              border: "1px solid",
+              borderColor: "#dbeafe",
+            }}
+          >
+            <Box
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                bgcolor: "#dbeafe",
+                color: "#2563eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 800,
+                flexShrink: 0,
+              }}
+            >
+              @
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: "#1f2937" }}>
+                {selectedEmail.subject || "(no subject)"}
+              </Typography>
+              <Typography sx={{ fontSize: 10, color: "#6b7280" }}>
+                {getEmailSender(selectedEmail)}
+              </Typography>
+              <Typography sx={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace", mt: 0.5 }}>
+                {getEmailDate(selectedEmail)}
+              </Typography>
+            </Box>
+          </Box>
+        ) : mode === "single" ? (
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "#fffbeb",
+              border: "1px solid",
+              borderColor: "#fde68a",
+            }}
+          >
+            <Typography sx={{ fontSize: 12, color: "#b45309", textAlign: "center" }}>
+              Select an email from the Inbox to analyze its temporal signature.
+            </Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "#eef2ff",
+              border: "1px solid",
+              borderColor: "#c7d2fe",
+            }}
+          >
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#3730a3" }}>
+              Inbox Burst Scan
+            </Typography>
+            <Typography sx={{ fontSize: 10, color: "#6366f1", mt: 0.5 }}>
+              Scans all {inboxEmails.length} inbox emails simultaneously. Detects
+              coordinated send bursts, off-hours patterns, and ghost anomalies across
+              the full dataset.
+            </Typography>
+          </Box>
+        )}
+
+        {error && (
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "#fef2f2",
+              border: "1px solid",
+              borderColor: "#fecaca",
+            }}
+          >
+            <Typography sx={{ fontSize: 12, color: "#b91c1c" }}>⚠ {error}</Typography>
+          </Box>
+        )}
+
+        {singleResult && <SingleResultCard result={singleResult} />}
+
+        {batchResult && (
+          <Stack spacing={2}>
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                bgcolor: "#f8fafc",
+                border: "1px solid",
+                borderColor: "#e2e8f0",
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Stack spacing={2}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: "#374151",
+                          textTransform: "uppercase",
+                          letterSpacing: 1,
+                        }}
+                      >
+                        Inbox Scan Complete
+                      </Typography>
+
+                      {batchResult.burst_detected && (
+                        <Chip
+                          size="small"
+                          label="Burst Pattern Detected"
+                          sx={{
+                            mt: 1,
+                            bgcolor: "#fee2e2",
+                            color: "#b91c1c",
+                            fontSize: 10,
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                          }}
+                        />
+                      )}
+                    </Box>
+
+                    <Box sx={{ textAlign: "right" }}>
+                      <Typography sx={{ fontSize: 28, fontWeight: 900, color: "#dc2626", lineHeight: 1 }}>
+                        {batchResult.spam}
+                      </Typography>
+                      <Typography sx={{ fontSize: 10, color: "#9ca3af" }}>
+                        threats / {batchResult.total}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  <Divider />
+
+                  <BatchDonut summary={batchResult} />
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#9ca3af",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  px: 0.5,
+                  mb: 1,
+                }}
+              >
+                Per-email Results (sorted by risk)
+              </Typography>
+
+              <Stack spacing={1}>
+                {sortedBatch.map((r) => {
+                  const c = RISK_COLORS[r.risk_level];
+                  const ex = expandedId === r.id;
+
+                  return (
+                    <Card
+                      key={r.id}
+                      elevation={0}
+                      sx={{
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: c.border,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Button
+                        fullWidth
+                        onClick={() => setExpandedId(ex ? null : r.id)}
+                        sx={{
+                          justifyContent: "flex-start",
+                          px: 1.5,
+                          py: 1.25,
+                          bgcolor: c.bg,
+                          color: "#111827",
+                          textTransform: "none",
+                          borderRadius: 0,
+                          "&:hover": { bgcolor: c.bg, filter: "brightness(0.98)" },
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1.25}
+                          alignItems="center"
+                          sx={{ width: "100%" }}
+                        >
+                          <Box
+                            sx={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              bgcolor: c.dot,
+                              color: "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 9,
+                              fontWeight: 900,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {RISK_ICON[r.risk_level]}
+                          </Box>
+
+                          <Typography
+                            sx={{
+                              flex: 1,
+                              fontSize: 12,
+                              color: "#374151",
+                              fontWeight: 500,
+                              textAlign: "left",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {r.id}
+                          </Typography>
+
+                          <Typography sx={{ fontSize: 12, fontWeight: 800, color: c.text }}>
+                            {r.confidence.toFixed(0)}%
+                          </Typography>
+
+                          <Chip
+                            size="small"
+                            label={r.risk_level}
+                            sx={{
+                              bgcolor: c.bg,
+                              color: c.text,
+                              border: "1px solid",
+                              borderColor: c.border,
+                              fontSize: 10,
+                              fontWeight: 800,
+                            }}
+                          />
+
+                          <Typography sx={{ fontSize: 12, color: "#9ca3af" }}>
+                            {ex ? "▲" : "▼"}
+                          </Typography>
+                        </Stack>
+                      </Button>
+
+                      {ex && (
+                        <Box sx={{ px: 1.5, pb: 1.5, pt: 1, bgcolor: "#fff", borderTop: "1px solid #f3f4f6" }}>
+                          <SingleResultCard result={r} />
+                        </Box>
+                      )}
+                    </Card>
+                  );
+                })}
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+      </Box>
+
+      <Box
+        sx={{
+          borderTop: "1px solid",
+          borderColor: "#f3f4f6",
+          px: 2,
+          py: 1.5,
+          bgcolor: "#fff",
+        }}
+      >
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={handleAnalyze}
+          disabled={
+            loading ||
+            (mode === "single" && !selectedEmail) ||
+            (mode === "batch" && inboxEmails.length === 0)
+          }
+          sx={{
+            py: 1.25,
+            borderRadius: 2,
+            fontSize: 14,
+            fontWeight: 800,
+            textTransform: "none",
+            bgcolor: loading ? "#f3f4f6" : "#0f172a",
+            color: loading ? "#9ca3af" : "#fff",
+            boxShadow: loading ? "none" : "0 1px 3px rgba(0,0,0,0.12)",
+            "&:hover": {
+              bgcolor: loading ? "#f3f4f6" : "#334155",
+              boxShadow: loading ? "none" : "0 1px 3px rgba(0,0,0,0.12)",
+            },
+          }}
+        >
+          {loading ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <CircularProgress size={16} sx={{ color: "currentColor" }} />
+              <span>
+                {mode === "batch"
+                  ? `Scanning ${inboxEmails.length} emails…`
+                  : "Analyzing…"}
+              </span>
+            </Stack>
+          ) : mode === "single" ? (
+            "▶  Run Temporal Analysis"
+          ) : (
+            `▶  Scan All ${inboxEmails.length} Inbox Emails`
+          )}
+        </Button>
+
+        <Typography
+          sx={{
+            textAlign: "center",
+            fontSize: 10,
+            color: "#9ca3af",
+            mt: 1.5,
+          }}
+        >
+          Stacking Ensemble · RF + XGBoost + SVM · 11 Temporal Zones
+        </Typography>
+      </Box>
+    </Card>
   );
 }

@@ -690,7 +690,7 @@ export default function Analyzer() {
         </Box>
       )}
 
-       {activeSection === "time" && <TemporalEvasionPanel />}
+       {activeSection === "time" && <TemporalEvasionPanel selectedEmail={selectedEmail} />}
 
       {/* Other sections - placeholders with better UI */}
 
