@@ -327,6 +327,28 @@ useEffect(() => {
   try {
     const result = await scanSingleEmail(selectedEmail);
     setFullScanResult(result);
+
+    import("../services/analysisHistoryMappers").then(({ saveFullScanHistory }) => {
+      saveFullScanHistory({
+        source: INBOX_MEM_CACHE.source || "gmail",
+        sender: selectedEmail.sender,
+        subject: selectedEmail.subject,
+        email_date: selectedEmail.date || selectedEmail.received_at,
+        body: selectedEmail.body,
+        final_verdict: result.final_result?.verdict,
+        final_risk_score: result.final_result?.risk_score,
+        final_is_threat: result.final_result?.is_threat,
+        final_reasons: result.final_result?.reasons,
+        failed_modules: result.final_result?.failed_modules,
+        module_summary: result.module_summary,
+        obfuscation_result: result.modules?.obfuscation?.result,
+        temporal_result: result.modules?.temporal_evasion?.result,
+        header_result: result.modules?.header_spoofing?.result,
+        url_result: result.modules?.url_threat?.result,
+        raw_result: result,
+      });
+    }).catch(console.error);
+
   } catch (e: unknown) {
     setFullScanError(
       e instanceof Error ? e.message : "Failed to run full email scan"

@@ -333,6 +333,30 @@ export default function HeaderSpoofingPanel({
     try {
       const res = await analyzeHeaderSpoofing(form);
       setResult(res);
+      
+      // Save history asynchronously
+      import("../../services/analysisHistoryMappers").then(({ saveHeaderHistory }) => {
+        saveHeaderHistory({
+          source: headers ? "gmail" : "manual",
+          sender: form.email_from,
+          subject: form.subject,
+          body: form.body,
+          spf: form.spf ? "pass" : "fail",
+          dkim: form.dkim ? "pass" : "fail",
+          dmarc: headers ? getHeaderValue(headers, "dmarc") || "" : "",
+          sender_domain: form.email_from.split("@")[1] || "",
+          header_count: Object.keys(headers || {}).length,
+          risk_level: res.risk_level,
+          confidence: res.confidence,
+          is_threat: res.is_threat,
+          threat_type: res.threat_type,
+          model_used: res.model_used,
+          details: res.details,
+          scores: res.scores,
+          raw_result: res,
+        });
+      }).catch(err => console.error("Could not load history mapper", err));
+
     } catch (err: any) {
       setError(err?.message ?? "Request failed");
     } finally {

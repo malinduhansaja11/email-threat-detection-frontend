@@ -469,6 +469,25 @@ export default function TemporalEvasionPanel({
         burst_count: 1,
       });
       setSingleResult(res);
+
+      import("../../services/analysisHistoryMappers").then(({ saveTemporalHistory }) => {
+        saveTemporalHistory({
+          source: "gmail",
+          sender: getEmailSender(selectedEmail),
+          subject: selectedEmail.subject,
+          email_date: getEmailDate(selectedEmail),
+          body: selectedEmail.body,
+          risk_level: res.risk_level,
+          confidence: res.confidence,
+          is_threat: res.prediction.toLowerCase() === "spam",
+          threat_type: res.prediction,
+          model_used: (res as any).model_used || "Temporal Model",
+          temporal_flags: res.flags,
+          temporal_features: res.temporal,
+          raw_result: res,
+        });
+      }).catch(err => console.error(err));
+
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Analysis failed");
     } finally {
@@ -494,6 +513,28 @@ export default function TemporalEvasionPanel({
         })),
       });
       setBatchResult(res);
+
+      import("../../services/analysisHistoryMappers").then(({ saveTemporalHistory }) => {
+        res.results.forEach((r) => {
+          const email = inboxEmails.find((e) => e.id === r.id);
+          saveTemporalHistory({
+            source: "gmail",
+            sender: email ? getEmailSender(email) : "",
+            subject: email?.subject || r.id,
+            email_date: email ? getEmailDate(email) : "",
+            body: email?.body,
+            risk_level: r.risk_level,
+            confidence: r.confidence,
+            is_threat: r.prediction.toLowerCase() === "spam",
+            threat_type: r.prediction,
+            model_used: (r as any).model_used || "Temporal Model",
+            temporal_flags: r.flags,
+            temporal_features: r.temporal,
+            raw_result: r,
+          });
+        });
+      }).catch(err => console.error(err));
+
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Batch analysis failed");
     } finally {

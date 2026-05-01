@@ -23,7 +23,7 @@ import TemporalEvasionPanel from "../components/analyzer/TemporalEvasionPanel.ts
 import EmailInputCard from "../components/analyzer/EmailInputCard.tsx";
 import ResultsPanel from "../components/analyzer/ResultsPanel.tsx";
 import HighlightedBody from "../components/analyzer/HighlightedBody.tsx";
-import { saveHistory } from "../services/historyService";
+import { saveObfuscationHistory, saveUrlHistory } from "../services/analysisHistoryMappers";
 
 
 import { analyzeEmailBody } from "../services/analyzerService";
@@ -218,13 +218,14 @@ function URLAnalyzerPanel({
       setResults(data.results ?? []);
       setVerdict(data.verdict ?? "");
 
-      await saveHistory({
-        type: "phishingLinks",
+      await saveUrlHistory({
         source: selectedEmail ? "gmail" : "demo",
         sender: selectedEmail?.sender,
         subject: selectedEmail?.subject ?? "URL Scan",
         url_count: data.results?.length || 0,
         url_verdict: data.verdict || "unknown",
+        urls: urls,
+        raw_result: data,
       });
     } catch {
       setError("❌ Could not reach backend. Make sure uvicorn is running on port 8000.");
@@ -248,13 +249,14 @@ function URLAnalyzerPanel({
       setResults([data]);
       setVerdict(data.action ?? "");
 
-      await saveHistory({
-        type: "phishingLinks",
+      await saveUrlHistory({
         source: selectedEmail ? "gmail" : "demo",
         sender: selectedEmail?.sender,
         subject: selectedEmail?.subject ?? "Manual URL Scan",
         url_count: 1,
         url_verdict: data.action || "unknown",
+        urls: [manualUrl],
+        raw_result: data,
       });
     } catch {
       setError("❌ Could not reach backend. Make sure uvicorn is running on port 8000.");
@@ -547,13 +549,14 @@ export default function Analyzer() {
       setResult(data);
 
       // ✅ Save to Firebase History
-      await saveHistory({
-        type: "obfuscation",
+      await saveObfuscationHistory({
         source: selectedEmail ? "gmail" : "demo",
         sender: selectedEmail?.sender ?? "manual",
         subject: selectedEmail?.subject ?? "Manual Analyze",
         risk_score: data.risk_score,
         obf_tokens: data.obf_tokens,
+        body: body,
+        raw_result: data,
       });
 
     } catch (err) {
