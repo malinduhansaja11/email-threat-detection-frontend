@@ -22,7 +22,11 @@ import TuneIcon from "@mui/icons-material/Tune";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import SortIcon from "@mui/icons-material/Sort";
 import { useNavigate } from "react-router-dom";
-
+import {
+  scanSingleEmail,
+  type FullEmailScanResponse,
+} from "../services/fullEmailScanService";
+import FullEmailScanDialog from "../components/inbox/FullEmailScanDialog";
 import {
   connectGmail,
   disconnectGmail,
@@ -143,6 +147,18 @@ export default function Inbox() {
       return found ?? INBOX_MEM_CACHE.emails[0];
     }
   );
+
+const [fullScanOpen, setFullScanOpen] = useState(false);
+const [fullScanLoading, setFullScanLoading] = useState(false);
+const [fullScanError, setFullScanError] = useState("");
+const [fullScanResult, setFullScanResult] =
+  useState<FullEmailScanResponse | null>(null);
+
+
+  const [singleScanLoading, setSingleScanLoading] = useState(false);
+const [singleScanError, setSingleScanError] = useState("");
+const [singleScanResult, setSingleScanResult] =
+  useState<FullEmailScanResponse | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -285,9 +301,40 @@ export default function Inbox() {
   };
 
   useEffect(() => {
+  setSingleScanResult(null);
+  setSingleScanError("");
+}, [selectedEmail?.id]);
+
+
+useEffect(() => {
+  setFullScanResult(null);
+  setFullScanError("");
+}, [selectedEmail?.id]);
+
+  useEffect(() => {
     load(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const onFullScan = async () => {
+  if (!selectedEmail) return;
+
+  setFullScanOpen(true);
+  setFullScanLoading(true);
+  setFullScanError("");
+  setFullScanResult(null);
+
+  try {
+    const result = await scanSingleEmail(selectedEmail);
+    setFullScanResult(result);
+  } catch (e: unknown) {
+    setFullScanError(
+      e instanceof Error ? e.message : "Failed to run full email scan"
+    );
+  } finally {
+    setFullScanLoading(false);
+  }
+};
 
   const onSeed = async () => {
     setLoading(true);
@@ -659,14 +706,51 @@ export default function Inbox() {
                   </Box>
                 )}
 
-                <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                  <Button variant="contained" onClick={onAnalyze}>
-                    Analyze
-                  </Button>
-                  <Button variant="outlined" onClick={() => load(true)}>
-                    Refresh
-                  </Button>
-                </Box>
+              <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap" }}>
+  <Button
+    variant="contained"
+    onClick={onAnalyze}
+    disabled={!selectedEmail}
+    sx={{ borderRadius: 2, fontWeight: 800 }}
+  >
+    Analyze
+  </Button>
+
+  <Button
+    variant="outlined"
+    onClick={onFullScan}
+    disabled={!selectedEmail || fullScanLoading}
+    startIcon={
+      fullScanLoading ? (
+        <CircularProgress size={16} />
+      ) : (
+        <ShieldOutlinedIcon />
+      )
+    }
+    sx={{ borderRadius: 2, fontWeight: 800 }}
+  >
+    {fullScanLoading ? "Scanning..." : "Full Scan"}
+  </Button>
+
+  <Button
+    variant="outlined"
+    onClick={() => load(true)}
+    disabled={loading || fullScanLoading}
+    startIcon={<RefreshIcon />}
+    sx={{ borderRadius: 2, fontWeight: 800 }}
+  >
+    Refresh
+  </Button>
+</Stack>
+
+<FullEmailScanDialog
+  open={fullScanOpen}
+  loading={fullScanLoading}
+  error={fullScanError}
+  result={fullScanResult}
+  emailBody={selectedEmail?.body || ""}
+  onClose={() => setFullScanOpen(false)}
+/>
               </>
             )}
           </CardContent>
