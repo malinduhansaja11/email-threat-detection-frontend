@@ -12,12 +12,7 @@ export async function checkAuthStatus(): Promise<boolean> {
   return data.connected === true;
 }
 
-/**
- * ✅ Disconnect Gmail session
- * IMPORTANT:
- * Backend එකේ logout/disconnect endpoint එක project එකට අනුව වෙනස් වෙන්න පුළුවන්.
- * මේක common endpoints කිහිපයක් try කරනවා.
- */
+
 export async function disconnectGmail(): Promise<void> {
   const candidates = [
     `${API_BASE}/auth/logout`,
