@@ -20,6 +20,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import TuneIcon from "@mui/icons-material/Tune";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import { INBOX_MEM_CACHE } from "../services/inboxCache";
 import SortIcon from "@mui/icons-material/Sort";
 import { useNavigate } from "react-router-dom";
 import {
@@ -58,19 +59,19 @@ type GmailEmailItem = EmailItem & {
   threat?: ThreatResult;
 };
 
-let INBOX_MEM_CACHE: {
-  emails: GmailEmailItem[] | null;
-  selectedEmailId: string | null;
-  source: "gmail" | "demo" | null;
-  gmailConnected: boolean;
-  scanResult: ScanResult | null;
-} = {
-  emails: null,
-  selectedEmailId: null,
-  source: null,
-  gmailConnected: false,
-  scanResult: null,
-};
+// let INBOX_MEM_CACHE: {
+//   emails: GmailEmailItem[] | null;
+//   selectedEmailId: string | null;
+//   source: "gmail" | "demo" | null;
+//   gmailConnected: boolean;
+//   scanResult: ScanResult | null;
+// } = {
+//   emails: null,
+//   selectedEmailId: null,
+//   source: null,
+//   gmailConnected: false,
+//   scanResult: null,
+// };
 
 const RISK_ORDER: Record<string, number> = {
   CRITICAL: 0,

@@ -240,13 +240,13 @@ export function generateSingleEmailThreatReportPdf(
   doc.setFontSize(10);
   doc.text("Final Verdict:", 18, y + 12);
   doc.text("Risk Score:", 18, y + 20);
-  doc.text("Threat:", 110, y + 12);
+
   doc.text("Email ID:", 110, y + 20);
 
   doc.setFont("helvetica", "normal");
   doc.text(toText(finalResult.verdict), 48, y + 12);
   doc.text(`${toText(finalResult.risk_score)}%`, 48, y + 20);
-  doc.text(finalResult.is_threat ? "Yes" : "No", 130, y + 12);
+ 
   doc.text(toText(email.id || result.email_id), 130, y + 20);
 
   y += 42;
@@ -285,14 +285,12 @@ export function generateSingleEmailThreatReportPdf(
   y = addLabelValue(doc, "Threat Detected", temporal.is_threat ?? summary.temporal_evasion?.is_threat ?? false, y);
   y = addLabelValue(doc, "Risk Level", temporal.risk_level ?? summary.temporal_evasion?.risk_level ?? "UNKNOWN", y);
   y = addLabelValue(doc, "Confidence", temporal.confidence ?? summary.temporal_evasion?.confidence ?? "—", y);
-  y = addLabelValue(doc, "Model Used", temporal.model_used ?? summary.temporal_evasion?.model_used ?? "—", y);
   y = addBulletList(doc, "Temporal indicators:", temporalFlags, y);
 
   y = addSectionTitle(doc, "Header Spoofing Analysis Details", y + 2);
   y = addLabelValue(doc, "Threat Detected", header.is_threat ?? summary.header_spoofing?.is_threat ?? false, y);
   y = addLabelValue(doc, "Risk Level", header.risk_level ?? summary.header_spoofing?.risk_level ?? "UNKNOWN", y);
   y = addLabelValue(doc, "Confidence", header.confidence ?? summary.header_spoofing?.confidence ?? "—", y);
-  y = addLabelValue(doc, "Model Used", header.model_used ?? summary.header_spoofing?.model_used ?? "—", y);
   y = addLabelValue(doc, "SPF", header.spf ?? header.spf_status ?? email.spf ?? "—", y);
   y = addLabelValue(doc, "DKIM", header.dkim ?? header.dkim_status ?? email.dkim ?? "—", y);
   y = addLabelValue(doc, "DMARC", header.dmarc ?? header.dmarc_status ?? email.dmarc ?? "—", y);

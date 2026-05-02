@@ -5,21 +5,65 @@ import Analyzer from "../pages/Analyzer.tsx";
 import History from "../pages/History.tsx";
 import Reports from "../pages/Reports.tsx";
 import Settings from "../pages/Settings.tsx";
+import Login from "../pages/Login.tsx";
+import Register from "../pages/Register.tsx";
+import PendingApproval from "../pages/PendingApproval.tsx";
+import AdminPanel from "../pages/AdminPanel.tsx";
+import ProtectedRoute from "../components/ProtectedRoute.tsx";
 
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/register",
+    element: <Register />,
+  },
+  {
+    path: "/pending",
+    element: <PendingApproval />,
+  },
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute adminOnly>
+        <AdminPanel />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
-      { index: true, element: <Inbox /> },
-      
-      
-      { path: "inbox", element: <Inbox /> },
-      { path: "analyzer", element: <Analyzer /> },
-      { path: "history", element: <History /> },
-      { path: "reports", element: <Reports /> },
-      { path: "settings", element: <Settings /> },
-      { path: "/history", element: <History /> }
+      {
+        index: true,
+        element: <Inbox />,
+      },
+      {
+        path: "inbox",
+        element: <Inbox />,
+      },
+      {
+        path: "analyzer",
+        element: <Analyzer />,
+      },
+      {
+        path: "history",
+        element: <History />,
+      },
+      {
+        path: "reports",
+        element: <Reports />,
+      },
+      {
+        path: "settings",
+        element: <Settings />,
+      },
     ],
   },
 ]);

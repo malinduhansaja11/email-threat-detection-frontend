@@ -688,16 +688,7 @@ export default function FullEmailScanDialog({
                       )}
                     />
 
-                    <DetailRow
-                      label="Model Used"
-                      value={
-                        String(
-                          temporalResult.model_used ||
-                          summary?.temporal_evasion?.model_used ||
-                          "Unknown"
-                        )
-                      }
-                    />
+                   
 
                     <Box sx={{ mt: 2 }}>
                       <Typography
@@ -784,16 +775,7 @@ export default function FullEmailScanDialog({
                       )}
                     />
 
-                    <DetailRow
-                      label="Model Used"
-                      value={
-                        String(
-                          headerResult.model_used ||
-                          summary?.header_spoofing?.model_used ||
-                          "Unknown"
-                        )
-                      }
-                    />
+                    
 
                     <DetailRow
                       label="SPF"

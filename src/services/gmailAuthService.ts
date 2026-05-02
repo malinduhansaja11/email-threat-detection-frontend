@@ -1,38 +1,28 @@
-const API_BASE = "http://localhost:8000";
-
-export function connectGmail() {
-  window.location.href = `${API_BASE}/auth/google/login`;
-}
+import { apiFetch, apiJson } from "./apiClient";
 
 export async function checkAuthStatus(): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/auth/status`, {
-    credentials: "include",
-  });
-  const data = await res.json();
-  return data.connected === true;
+  try {
+    const data = await apiJson<{ connected: boolean }>("/auth/status");
+    return data.connected === true;
+  } catch {
+    return false;
+  }
 }
 
+export async function connectGmail(): Promise<void> {
+  const data = await apiJson<{ url: string }>("/auth/google/start", {
+    method: "POST",
+  });
 
-export async function disconnectGmail(): Promise<void> {
-  const candidates = [
-    `${API_BASE}/auth/logout`,
-    `${API_BASE}/auth/google/logout`,
-    `${API_BASE}/auth/disconnect`,
-  ];
-
-  // Try endpoints until one succeeds (2xx)
-  for (const url of candidates) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) return;
-    } catch {
-      // ignore and try next
-    }
+  if (!data.url) {
+    throw new Error("Backend did not return Gmail OAuth URL");
   }
 
-  // If none exists, we still "locally" disconnect in UI,
-  // but backend might stay connected until you add a real logout route.
+  window.location.href = data.url;
+}
+
+export async function disconnectGmail(): Promise<void> {
+  await apiFetch("/auth/logout", {
+    method: "POST",
+  });
 }

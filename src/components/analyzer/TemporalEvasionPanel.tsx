@@ -56,12 +56,12 @@ const RISK_COLORS: Record<
     solid: "#f97316",
   },
   CRITICAL: {
-    bg: "#ffffff",
-    text: "#b91c1c",
-    border: "#000000",
-    dot: "#ef4444",
-    solid: "#ef4444",
-  },
+  bg: "#fef2f2",
+  text: "#b91c1c",
+  border: "#fecaca",
+  dot: "#ef4444",
+  solid: "#ef4444",
+},
 };
 
 const RISK_ICON: Record<RiskLevel, string> = {
@@ -222,42 +222,46 @@ function MetricPill({
 }) {
   return (
     <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        px: 1.5,
-        py: 1.25,
-        borderRadius: 2,
-        border: "1px solid",
-        borderColor: alert ? "#fecaca" : "#e5e7eb",
-        bgcolor: alert ? "#fef2f2" : "#f9fafb",
-        minWidth: 0,
-      }}
-    >
-      <Typography
-        sx={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: 1,
-          color: alert ? "#ef4444" : "#9ca3af",
-        }}
-      >
-        {label}
-      </Typography>
-      <Typography
-        sx={{
-          fontSize: 13,
-          fontWeight: 800,
-          mt: 0.5,
-          color: alert ? "#b91c1c" : "#374151",
-          textAlign: "center",
-        }}
-      >
-        {value}
-      </Typography>
-    </Box>
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    px: 1.5,
+    py: 1.25,
+    borderRadius: 2.5,
+    border: "1px solid",
+    borderColor: alert ? "#fecaca" : "#e5e7eb",
+    bgcolor: alert ? "#fff5f5" : "#ffffff",
+    minWidth: 0,
+    minHeight: 66,
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  }}
+>
+  <Typography
+    sx={{
+      fontSize: 10,
+      fontWeight: 800,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      color: alert ? "#dc2626" : "#94a3b8",
+      mb: 0.5,
+    }}
+  >
+    {label}
+  </Typography>
+
+  <Typography
+    sx={{
+      fontSize: 13,
+      fontWeight: 800,
+      color: alert ? "#991b1b" : "#1f2937",
+      textAlign: "center",
+      lineHeight: 1.25,
+    }}
+  >
+    {value}
+  </Typography>
+</Box>
   );
 }
 
@@ -267,14 +271,16 @@ function SingleResultCard({ result }: { result: TemporalResult }) {
 
   return (
     <Card
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        border: "1px solid",
-        borderColor: c.border,
-        bgcolor: c.bg,
-      }}
-    >
+  elevation={0}
+  sx={{
+    borderRadius: 3,
+    border: "1px solid",
+    borderColor: c.border,
+    bgcolor: "#ffffff",
+    overflow: "hidden",
+    boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
+  }}
+>
       <CardContent sx={{ p: 2 }}>
         <Stack spacing={2}>
           <Stack
@@ -332,9 +338,9 @@ function SingleResultCard({ result }: { result: TemporalResult }) {
                   <Typography sx={{ color: "#f87171", fontSize: 12, mt: "2px" }}>
                     ⚑
                   </Typography>
-                  <Typography sx={{ fontSize: 21, color: "#b91c1c" }}>
-                    {flag}
-                  </Typography>
+                  <Typography sx={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
+  {flag}
+</Typography>
                 </Stack>
               ))}
             </Stack>
@@ -549,72 +555,123 @@ export default function TemporalEvasionPanel({
 
   return (
     <Card
-      elevation={0}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        bgcolor: "#fff",
-        borderRadius: 3,
-        border: "1px solid",
-        borderColor: "#e5e7eb",
-        overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-      }}
-    >
+  elevation={0}
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    bgcolor: "#ffffff",
+    borderRadius: 3,
+    border: "1px solid",
+    borderColor: "#dbe4ee",
+    overflow: "hidden",
+    boxShadow: "0 10px 28px rgba(15,23,42,0.06)",
+  }}
+>
       <Box
-        sx={{
-          px: 2.5,
-          py: 1.75,
-          borderBottom: "1px solid",
-          borderColor: "#f3f4f6",
-          background: "linear-gradient(to right, #f8fafc, #ffffff)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-          flexWrap: "wrap",
-        }}
-      >
+  sx={{
+    px: 2.5,
+    py: 2,
+    borderBottom: "1px solid",
+    borderColor: "#dbeafe",
+    background: "linear-gradient(135deg, #eff6ff 0%, #f8fbff 45%, #ffffff 100%)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 2,
+    flexWrap: "wrap",
+  }}
+>
         <Stack direction="row" spacing={1.25} alignItems="center">
           <Typography sx={{ fontSize: 18 }}>⏱</Typography>
           <Box>
-            <Typography sx={{ fontSize: 14, fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>
-              Time-based Analyzer
-            </Typography>
-            <Typography sx={{ fontSize: 10, color: "#9ca3af", lineHeight: 1.2 }}>
-              Global Temporal Evasion v1
-            </Typography>
+            <Typography sx={{ fontSize: 16, fontWeight: 900, color: "#0f172a", lineHeight: 1.2 }}>
+  Time-based Analyzer
+</Typography>
+<Typography sx={{ fontSize: 11, color: "#64748b", lineHeight: 1.4, mt: 0.25 }}>
+  Detect off-hours activity, burst campaigns, and suspicious temporal behavior.
+</Typography>
           </Box>
         </Stack>
 
         <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            bgcolor: "#f3f4f6",
-            borderRadius: 2,
-            p: 0.5,
-            gap: 0.5,
-          }}
-        >
-         
-        </Box>
+  sx={{
+    display: "flex",
+    alignItems: "center",
+    bgcolor: "#ffffff",
+    borderRadius: 2,
+    p: 0.5,
+    gap: 0.5,
+    border: "1px solid #dbe4ee",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  }}
+>
+  <Button
+    size="small"
+    onClick={() => setMode("single")}
+    sx={{
+      px: 1.8,
+      py: 0.7,
+      borderRadius: 1.5,
+      textTransform: "none",
+      fontSize: 12,
+      fontWeight: 800,
+      bgcolor: mode === "single" ? "#2563eb" : "transparent",
+      color: mode === "single" ? "#ffffff" : "#64748b",
+      "&:hover": {
+        bgcolor: mode === "single" ? "#1d4ed8" : "#f8fafc",
+      },
+    }}
+  >
+    Single
+  </Button>
+
+  <Button
+    size="small"
+    onClick={() => setMode("batch")}
+    sx={{
+      px: 1.8,
+      py: 0.7,
+      borderRadius: 1.5,
+      textTransform: "none",
+      fontSize: 12,
+      fontWeight: 800,
+      bgcolor: mode === "batch" ? "#0f172a" : "transparent",
+      color: mode === "batch" ? "#ffffff" : "#64748b",
+      "&:hover": {
+        bgcolor: mode === "batch" ? "#1e293b" : "#f8fafc",
+      },
+    }}
+  >
+    Batch
+  </Button>
+</Box>
       </Box>
 
-      <Box sx={{ flex: 1, overflowY: "auto", p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box
+  sx={{
+    flex: 1,
+    overflowY: "auto",
+    p: 2,
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    bgcolor: "#f8fafc",
+  }}
+>
         {mode === "single" && selectedEmail ? (
           <Box
             sx={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 1.5,
-              p: 1.5,
-              borderRadius: 2,
-              bgcolor: "#eff6ff",
-              border: "1px solid",
-              borderColor: "#dbeafe",
-            }}
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 1.5,
+  p: 1.75,
+  borderRadius: 2.5,
+  bgcolor: "#ffffff",
+  border: "1px solid",
+  borderColor: "#dbeafe",
+  boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
+}}
           >
             <Box
               sx={{
@@ -896,19 +953,27 @@ export default function TemporalEvasionPanel({
             (mode === "batch" && inboxEmails.length === 0)
           }
           sx={{
-            py: 1.25,
-            borderRadius: 2,
-            fontSize: 14,
-            fontWeight: 800,
-            textTransform: "none",
-            bgcolor: loading ? "#f3f4f6" : "#0f172a",
-            color: loading ? "#9ca3af" : "#fff",
-            boxShadow: loading ? "none" : "0 1px 3px rgba(0,0,0,0.12)",
-            "&:hover": {
-              bgcolor: loading ? "#f3f4f6" : "#334155",
-              boxShadow: loading ? "none" : "0 1px 3px rgba(0,0,0,0.12)",
-            },
-          }}
+  py: 1.35,
+  borderRadius: 2.5,
+  fontSize: 14,
+  fontWeight: 900,
+  textTransform: "none",
+  background: loading
+    ? "#e5e7eb"
+    : mode === "single"
+    ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"
+    : "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+  color: loading ? "#94a3b8" : "#ffffff",
+  boxShadow: loading ? "none" : "0 10px 20px rgba(15,23,42,0.14)",
+  "&:hover": {
+    background: loading
+      ? "#e5e7eb"
+      : mode === "single"
+      ? "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)"
+      : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    boxShadow: loading ? "none" : "0 12px 22px rgba(15,23,42,0.16)",
+  },
+}}
         >
           {loading ? (
             <Stack direction="row" spacing={1} alignItems="center">
@@ -934,7 +999,7 @@ export default function TemporalEvasionPanel({
             mt: 1.5,
           }}
         >
-          Stacking Ensemble · RF + XGBoost + SVM · 11 Temporal Zones
+       
         </Typography>
       </Box>
     </Card>
