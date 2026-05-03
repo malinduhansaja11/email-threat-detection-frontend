@@ -324,7 +324,7 @@ export function generateSingleEmailThreatReportPdf(
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
     doc.text(
-      `AI-Based Email Threat Detection System | Page ${i} of ${totalPages}`,
+      ` Email Threat Detection System | Page ${i} of ${totalPages}`,
       14,
       290
     );

@@ -146,7 +146,7 @@ export default function AppLayout() {
 
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-              AI-Based E-mail Threat Detection System
+             E-mail Threat Detection System
             </Typography>
 
             {profile?.email && (
